@@ -62,7 +62,7 @@ func (rr *REST) SetupRouter(routes map[string]map[string]APIEndpoint) {
 					return
 				}
 
-				BadRequest(w, r, "route not match")
+				BadRequest(w, r, "route does not match")
 
 				rr.log(true, "hit", localMethod, localRoute, r.RequestURI, r.RemoteAddr, http.StatusBadRequest, 0, time.Since(now))
 
