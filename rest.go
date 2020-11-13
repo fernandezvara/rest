@@ -15,14 +15,14 @@ type REST struct {
 	httpServer      *http.Server
 	optionsMappings map[string][]string
 	logger          *Logging
-	tlsCer          string
-	tlsKey          string
-	tlsCACert       string
+	tlsCer          []byte
+	tlsKey          []byte
+	tlsCACert       []byte
 	tls             bool
 }
 
 // New returns a pointer to a REST struct that holds the interactions for the API
-func New(ipPort, tlsCertificate, tlsKey, tlsCACert string, logger *Logging) (*REST, error) {
+func New(ipPort string, tlsCertificate, tlsKey, tlsCACert []byte, logger *Logging) (*REST, error) {
 
 	var (
 		rr  REST

@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
@@ -140,6 +138,8 @@ func (r *rawLogWriter) Write(p []byte) (n int, err error) {
 // Start runs the REST API blocking execution
 func (rr *REST) Start() error {
 
+	var err error
+
 	// graceful stop must be handled by the caller
 	rr.httpServer = new(http.Server)
 	rr.httpServer.Addr = rr.ipPort
@@ -147,38 +147,48 @@ func (rr *REST) Start() error {
 	rr.httpServer.MaxHeaderBytes = 1 << 20
 
 	// internal errors, mainly tls ones
-	rr.httpServer.ErrorLog = log.New(&rawLogWriter{logger: rr.logger.Logger()}, "", 0)
+	rr.httpServer.ErrorLog = log.New(&rawLogWriter{logger: rr.logger.Logger()}, "httpServer", 0)
 
 	// certificate information? then add TLS configuration
-	if rr.tlsCer == "" || rr.tlsKey == "" || rr.tlsCACert == "" {
-		return errors.New("no certificates configured")
+	if len(rr.tlsCer) > 0 && len(rr.tlsKey) > 0 && len(rr.tlsCACert) > 0 {
+
+		var (
+			tlsConfig   tls.Config
+			certificate tls.Certificate
+		)
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(rr.tlsCACert)
+
+		tlsConfig.ClientCAs = caCertPool
+		tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		tlsConfig.BuildNameToCertificate()
+
+		rr.tls = true
+		tlsConfig.MinVersion = tls.VersionTLS12
+		tlsConfig.CurvePreferences = []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256}
+		tlsConfig.PreferServerCipherSuites = true
+		tlsConfig.CipherSuites = []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		}
+
+		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+
+		certificate, err = tls.X509KeyPair(rr.tlsCer, rr.tlsKey)
+		if err != nil {
+			return err
+		}
+
+		tlsConfig.Certificates = []tls.Certificate{certificate}
+
+		rr.httpServer.TLSConfig = &tlsConfig
+
+		return rr.httpServer.ListenAndServeTLS("", "")
 	}
 
-	var tlsConfig tls.Config
-
-	caCert, _ := ioutil.ReadFile(rr.tlsCACert)
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	tlsConfig.ClientCAs = caCertPool
-	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
-	tlsConfig.BuildNameToCertificate()
-
-	rr.tls = true
-	tlsConfig.MinVersion = tls.VersionTLS12
-	tlsConfig.CurvePreferences = []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256}
-	tlsConfig.PreferServerCipherSuites = true
-	tlsConfig.CipherSuites = []uint16{
-		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-	}
-
-	tlsConfig.NextProtos = []string{"h2", "http/1.1"}
-
-	rr.httpServer.TLSConfig = &tlsConfig
-
-	return rr.httpServer.ListenAndServeTLS(rr.tlsCer, rr.tlsKey)
+	return rr.httpServer.ListenAndServe()
 
 }
 
