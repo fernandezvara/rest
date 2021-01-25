@@ -36,6 +36,8 @@ func Response(w http.ResponseWriter, response interface{}, err error, desiredSta
 		return ErrorResponse(w, http.StatusBadRequest, "")
 	case ErrUnauthorized:
 		return ErrorResponse(w, http.StatusUnauthorized, "")
+	case ErrNotFound:
+		return ErrorResponse(w, http.StatusNotFound, "")
 	}
 	fmt.Printf("Unknown err: type: %T; value: %q\n", err, err)
 	return ErrorResponse(w, http.StatusInternalServerError, err.Error())
