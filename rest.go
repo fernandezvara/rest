@@ -10,19 +10,20 @@ import (
 
 // REST holds all logic for the API defined
 type REST struct {
-	router          *httprouter.Router
-	ipPort          string
-	httpServer      *http.Server
-	optionsMappings map[string][]string
-	logger          *Logging
-	tlsCer          []byte
-	tlsKey          []byte
-	tlsCACert       []byte
-	tls             bool
+	router            *httprouter.Router
+	ipPort            string
+	httpServer        *http.Server
+	optionsMappings   map[string][]string
+	logger            *Logging
+	tlsCer            []byte
+	tlsKey            []byte
+	tlsCACert         []byte
+	tls               bool
+	requireClientCert bool
 }
 
 // New returns a pointer to a REST struct that holds the interactions for the API
-func New(ipPort string, tlsCertificate, tlsKey, tlsCACert []byte, logger *Logging) (*REST, error) {
+func New(ipPort string, tlsCertificate, tlsKey, tlsCACert []byte, requireClientCert bool, logger *Logging) (*REST, error) {
 
 	var (
 		rr  REST
@@ -34,6 +35,7 @@ func New(ipPort string, tlsCertificate, tlsKey, tlsCACert []byte, logger *Loggin
 	rr.tlsKey = tlsKey
 	rr.tlsCACert = tlsCACert
 	rr.logger = logger
+	rr.requireClientCert = requireClientCert
 
 	return &rr, err
 

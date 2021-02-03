@@ -161,7 +161,9 @@ func (rr *REST) Start() error {
 		caCertPool.AppendCertsFromPEM(rr.tlsCACert)
 
 		tlsConfig.ClientCAs = caCertPool
-		// tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		if rr.requireClientCert {
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
 		tlsConfig.BuildNameToCertificate()
 
 		rr.tls = true
