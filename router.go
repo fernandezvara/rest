@@ -153,8 +153,7 @@ func (rr *REST) Start() error {
 	if len(rr.tlsCer) > 0 && len(rr.tlsKey) > 0 && len(rr.tlsCACert) > 0 {
 
 		var (
-			tlsConfig   tls.Config
-			certificate tls.Certificate
+			tlsConfig tls.Config
 		)
 
 		caCertPool := x509.NewCertPool()
@@ -178,20 +177,38 @@ func (rr *REST) Start() error {
 
 		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
 
-		certificate, err = tls.X509KeyPair(rr.tlsCer, rr.tlsKey)
+		rr.httpServer.TLSConfig = &tlsConfig
+
+		err = rr.SetCertificate(rr.tlsCer, rr.tlsKey)
 		if err != nil {
 			return err
 		}
-
-		tlsConfig.Certificates = []tls.Certificate{certificate}
-
-		rr.httpServer.TLSConfig = &tlsConfig
 
 		return rr.httpServer.ListenAndServeTLS("", "")
 	}
 
 	return rr.httpServer.ListenAndServe()
 
+}
+
+// SetCertificate allows to set the certificates on the fly
+func (rr *REST) SetCertificate(cert, key []byte) (err error) {
+
+	var (
+		certificate tls.Certificate
+	)
+
+	rr.tlsCer = cert
+	rr.tlsKey = key
+
+	certificate, err = tls.X509KeyPair(rr.tlsCer, rr.tlsKey)
+	if err != nil {
+		return
+	}
+
+	rr.httpServer.TLSConfig.Certificates = []tls.Certificate{certificate}
+
+	return
 }
 
 // Shutdown tells the http server to stop gracefully
