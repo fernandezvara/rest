@@ -31,8 +31,7 @@ func (rr *REST) SetupRouter(routes map[string]map[string]APIEndpoint) {
 		}
 	}
 
-	var router *httprouter.Router
-	router = httprouter.New()
+	var router *httprouter.Router = httprouter.New()
 
 	for method, mappings := range routes {
 		for route, endpoint := range mappings {
@@ -46,9 +45,7 @@ func (rr *REST) SetupRouter(routes map[string]map[string]APIEndpoint) {
 			//  - instrumentation
 			//  - logging
 			//  - headers
-			var wrapper func(w http.ResponseWriter, r *http.Request, ps httprouter.Params)
-
-			wrapper = func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+			var wrapper func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) = func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 				now := time.Now()
 				if rr.tls {
 					w.Header().Add("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -163,7 +160,6 @@ func (rr *REST) Start() error {
 		if rr.requireClientCert {
 			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
-		tlsConfig.BuildNameToCertificate()
 
 		rr.tls = true
 		tlsConfig.MinVersion = tls.VersionTLS12
@@ -234,7 +230,7 @@ func match(route string, matcher []string, r *http.Request) bool {
 		// do no check blank or .* routes since everything is already allowed
 		if m != "" && m != ".*" {
 			matched, err := regexp.MatchString(m, routeParts[i+1])
-			if err != nil || matched == false {
+			if err != nil || !matched {
 				return false
 			}
 		}
