@@ -36,6 +36,8 @@ func Response(w http.ResponseWriter, response interface{}, err error, desiredSta
 		return ErrorResponse(w, http.StatusBadRequest, "")
 	case ErrUnauthorized:
 		return ErrorResponse(w, http.StatusUnauthorized, "")
+	case ErrUnprocessableEntity:
+		return ErrorResponse(w, http.StatusUnprocessableEntity, "")
 	case ErrNotFound:
 		return ErrorResponse(w, http.StatusNotFound, "")
 	}
@@ -83,6 +85,11 @@ func Forbidden(w http.ResponseWriter, r *http.Request, reason string) {
 // Unauthorized is a generic 401 response
 func Unauthorized(w http.ResponseWriter, r *http.Request) {
 	ErrorResponse(w, http.StatusUnauthorized, "")
+}
+
+// UnprocessableEntity is a generic 422 response
+func UnprocessableEntity(w http.ResponseWriter, r *http.Request) {
+	ErrorResponse(w, http.StatusUnprocessableEntity, "")
 }
 
 // ErrorResponse returns a formatted error

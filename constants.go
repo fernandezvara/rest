@@ -9,10 +9,11 @@ import (
 
 // HTTP errors
 var (
-	ErrBadRequest   = errors.New("400")
-	ErrUnauthorized = errors.New("401")
-	ErrNotFound     = errors.New("404")
-	ErrConflict     = errors.New("409")
+	ErrBadRequest          = errors.New("400")
+	ErrUnauthorized        = errors.New("401")
+	ErrNotFound            = errors.New("404")
+	ErrConflict            = errors.New("409")
+	ErrUnprocessableEntity = errors.New("422")
 )
 
 // HTTPErrorStatus is the struct that user will receive as body. It can contain a reason
