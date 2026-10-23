@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -138,16 +137,14 @@ func (rr *REST) Start() error {
 	var err error
 
 	// graceful stop must be handled by the caller
-	rr.httpServer = new(http.Server)
-	rr.httpServer.Addr = rr.ipPort
 	rr.httpServer.Handler = rr.router
-	rr.httpServer.MaxHeaderBytes = 1 << 20
 
-	// internal errors, mainly tls ones
-	rr.httpServer.ErrorLog = log.New(&rawLogWriter{logger: rr.logger.Logger()}, "httpServer", 0)
+	rr.mu.RLock()
+	tlsCer, tlsKey := rr.tlsCer, rr.tlsKey
+	rr.mu.RUnlock()
 
 	// certificate information? then add TLS configuration
-	if len(rr.tlsCer) > 0 && len(rr.tlsKey) > 0 && len(rr.tlsCACert) > 0 {
+	if len(tlsCer) > 0 && len(tlsKey) > 0 && len(rr.tlsCACert) > 0 {
 
 		var (
 			tlsConfig tls.Config
@@ -172,10 +169,11 @@ func (rr *REST) Start() error {
 		}
 
 		tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+		tlsConfig.GetCertificate = rr.getCertificate
 
 		rr.httpServer.TLSConfig = &tlsConfig
 
-		err = rr.SetCertificate(rr.tlsCer, rr.tlsKey)
+		err = rr.SetCertificate(tlsCer, tlsKey)
 		if err != nil {
 			return err
 		}
@@ -194,17 +192,28 @@ func (rr *REST) SetCertificate(cert, key []byte) (err error) {
 		certificate tls.Certificate
 	)
 
-	rr.tlsCer = cert
-	rr.tlsKey = key
-
-	certificate, err = tls.X509KeyPair(rr.tlsCer, rr.tlsKey)
+	certificate, err = tls.X509KeyPair(cert, key)
 	if err != nil {
 		return
 	}
 
-	rr.httpServer.TLSConfig.Certificates = []tls.Certificate{certificate}
+	rr.mu.Lock()
+	rr.tlsCer = cert
+	rr.tlsKey = key
+	rr.certificate = &certificate
+	rr.mu.Unlock()
 
 	return
+}
+
+// getCertificate returns the current certificate, it is called on every TLS handshake
+func (rr *REST) getCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+
+	rr.mu.RLock()
+	defer rr.mu.RUnlock()
+
+	return rr.certificate, nil
+
 }
 
 // Shutdown tells the http server to stop gracefully
@@ -229,6 +238,9 @@ func match(route string, matcher []string, r *http.Request) bool {
 	for i, m := range matcher {
 		// do no check blank or .* routes since everything is already allowed
 		if m != "" && m != ".*" {
+			if i+1 >= len(routeParts) {
+				return false
+			}
 			matched, err := regexp.MatchString(m, routeParts[i+1])
 			if err != nil || !matched {
 				return false

@@ -1,7 +1,10 @@
 package rest
 
 import (
+	"crypto/tls"
+	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -13,6 +16,8 @@ type REST struct {
 	router            *httprouter.Router
 	ipPort            string
 	httpServer        *http.Server
+	mu                sync.RWMutex // protects tlsCer, tlsKey and certificate
+	certificate       *tls.Certificate
 	optionsMappings   map[string][]string
 	logger            *Logging
 	tlsCer            []byte
@@ -36,6 +41,16 @@ func New(ipPort string, tlsCertificate, tlsKey, tlsCACert []byte, requireClientC
 	rr.tlsCACert = tlsCACert
 	rr.logger = logger
 	rr.requireClientCert = requireClientCert
+
+	// created here so Start, Shutdown and SetCertificate can be called from different goroutines
+	rr.httpServer = &http.Server{
+		Addr:           ipPort,
+		MaxHeaderBytes: 1 << 20,
+	}
+	if logger != nil {
+		// internal errors, mainly tls ones
+		rr.httpServer.ErrorLog = log.New(&rawLogWriter{logger: logger.Logger()}, "httpServer", 0)
+	}
 
 	return &rr, err
 
